@@ -181,8 +181,8 @@ body {
 /* Botón jugar de nuevo — centrado verticalmente a la derecha */
 .btn-loss-replay {
   position: fixed;
-  left: 320px;
-  top: 50%;
+  left: 800px;
+  top: 1400px;
   transform: translateY(-50%);
   z-index: 2;
   font-family: 'Orbitron', monospace;
