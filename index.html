@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRIVIA CHALLENGE</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-intro">
+<div class="stars"></div>
+<div class="grid-overlay"></div>
+
+<div id="app">
+
+  <!-- SPLASH -->
+  <div id="splash-screen">
+    <img id="splash-img" src="img/splash-1.webp" alt="">
+  </div>
+
+  <!-- BACKGROUND MUSIC -->
+  <audio id="bg-music" loop>
+    <source src="audio/music.webm" type="audio/webm">
+    <source src="audio/music.mp3"  type="audio/mpeg">
+  </audio>
+
+  <!-- INTRO -->
+  <div id="intro-screen" class="screen">
+    <button class="btn-iniciar" onclick="startGame()">
+      <img src="img/btn-iniciar.png" alt="INICIAR JUEGO">
+    </button>
+  </div>
+
+  <!-- GAME -->
+  <div id="game-screen" class="screen lvl1">
+
+    
+
+    <div class="question-card">
+      <div class="question-text" id="question-text">Cargando...</div>
+    </div>
+
+    <div class="game-header">
+      <div class="helps-row">
+        <button class="help-btn help-btn-change" id="help-change" onclick="useChangeQuestion()"></button>
+        <button class="help-btn help-btn-5050" id="help-5050" onclick="use5050()"></button>
+      </div>
+      <div class="header-right">
+        <div class="level-badge">
+          <div class="level-label">NIVEL ACTUAL</div>
+          <div class="level-name" id="level-name">NIVEL 1</div>
+        </div>
+        <div class="timer-wrap">
+          <div class="timer-display" id="timer">30</div>
+          <div class="timer-bar"><div class="timer-bar-fill" id="timer-bar"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="answers-grid" id="answers-grid"></div>
+
+    
+  </div>
+
+  <!-- LOSS -->
+  <div id="loss-screen" class="screen">
+    <video id="loss-video" class="screen-video" src="img/gameover.mp4" loop muted playsinline></video>
+    <img class="screen-overlay" src="img/overlay-gameover.png" alt="">
+    <button class="btn-loss-replay" onclick="resetGame()">JUGAR DE NUEVO</button>
+  </div>
+
+  <!-- WIN -->
+  <div id="win-screen" class="screen">
+    <button class="btn-loss-replay" onclick="resetGame()">NUEVA PARTIDA</button>
+    <div class="win-particles" id="win-particles"></div>
+  </div>
+
+</div>
+
+<!-- LEVEL TRANSITION -->
+<div class="level-transition" id="level-transition">
+  <img class="lt-bg" src="img/level-transition-bg.webp" alt="">
+  <img class="lt-level-img" id="lt-level-img" src="" alt="">
+</div>
+
+<script>
+// ===== GAME DATA =====
+const PRIZES = ['Sin premio', 'Premio Bronce 🥉', 'Premio Plata 🥈', 'Premio Oro 🥇', 'Premio Mayor 🏆'];
+const LEVEL_NAMES = ['', 'NIVEL 1', 'NIVEL 2', 'NIVEL 3', 'NIVEL 4'];
+const LEVEL_CLASSES = ['', 'lvl1', 'lvl2', 'lvl3', 'lvl4'];
+const LEVEL_LABELS = ['', 'UNO', 'DOS', 'TRES', 'CUATRO'];
+const QUESTIONS_PER_LEVEL = [0, 1, 1, 1, 1];
+const TIMER_PER_LEVEL = [0, 60, 60, 60, 60];
+const TIMER_MAX = 45; // fallback, real value set per level
+
+// Banco único de 39 preguntas — se sortean aleatoriamente cada partida
+// Preguntas agrupadas por medicamento
+const BANK_BY_MED = {
+  ZOLEM: [
+    { q: "¿Cuál es el principio activo de <strong>ZOLEM</strong>?", opts: ["Pantoprazol", "Esomeprazol", "Lansoprazol", "Rabeprazol"], a: 0 },
+    { q: "¿Por qué <strong>ZOLEM</strong> tiene una elevada aceptabilidad?", opts: ["Se absorbe con o sin alimentos", "Mínimas interacciones medicamentosas", "Efectividad comprobada", "Todas las anteriores"], a: 3 },
+    { q: "¿Cuál es el beneficio de la baja afinidad de <strong>ZOLEM</strong> por el citocromo P450?", opts: ["Menor riesgo de interacciones farmacológicas", "Mayor absorción con alimentos", "Mejor distribución en células parietales", "Mayor tolerabilidad frente a eventos adversos"], a: 0 },
+    { q: "¿En qué concentración se encuentra disponible <strong>ZOLEM</strong>?", opts: ["10 mg", "20 mg", "40 mg", "80 mg"], a: 2 },
+    { q: "¿En qué forma farmacéutica se encuentra disponible <strong>ZOLEM</strong>?", opts: ["Tabletas de liberación prolongada", "Tabletas de liberación retardada", "Tabletas de liberación controlada", "Tabletas de liberación modificada"], a: 1 },
+    { q: "¿Cuánto dura el efecto de <strong>ZOLEM</strong>?", opts: ["1 hora", "2.5 horas", "7 a 9 horas", "Más de 24 horas"], a: 3 },
+    { q: "¿Por cuánto tiempo se administra <strong>ZOLEM</strong> en un paciente con ERGE?", opts: ["2 semanas", "4 semanas", "6 semanas", "8 semanas"], a: 3 },
+    { q: "¿Cómo describe mejor la inhibición de la bomba de protones que realiza <strong>ZOLEM</strong>?", opts: ["Irreversible", "Irrevocable", "Inmediata", "Reversible"], a: 0 },
+    { q: "¿En qué parte del sistema digestivo se absorbe <strong>ZOLEM</strong>?", opts: ["Esófago", "Estómago", "Duodeno", "Íleon"], a: 2 },
+  ],
+  IBS_BIOTIC: [
+    { q: "¿Cuál es uno de los principales mecanismos de acción de <strong>IBS BIOTIC</strong>?", opts: ["Disminuye inmunoglobulinas", "Disminuye la permeabilidad intestinal", "Aumenta la permeabilidad intestinal", "Aumenta los antígenos circulantes"], a: 1 },
+    { q: "<strong>IBS BIOTIC</strong> se usa en:", opts: ["Enfermedad inflamatoria intestinal", "Diarrea aguda", "Síndrome de intestino irritable", "Enfermedad de Crohn"], a: 2 },
+    { q: "¿Cuál de las siguientes NO es una especie contenida en <strong>IBS BIOTIC</strong>?", opts: ["Pediococcus acidilactici CECT 7483", "Lactobacillus plantarum CECT 7484", "Lactobacillus plantarum CECT 7485", "Streptococcus salivarius CECT 7486"], a: 3 },
+    { q: "¿Cuál afirmación sobre <strong>IBS BIOTIC</strong> es correcta?", opts: ["La OMS lo recomienda en el tratamiento de SII", "Es un probiótico rico en ácidos grasos de cadena corta", "Su bajo contenido de polifosfatos lo hace seguro en niños", "Se recomienda mantener refrigerado"], a: 0 },
+    { q: "¿Cuál NO es una propiedad de <strong>IBS BIOTIC</strong>?", opts: ["Producción de polifosfatos", "Disminución de la permeabilidad intestinal", "Producción de ácidos grasos de cadena corta", "Agonismo de receptores opiáceos intestinales"], a: 3 },
+    { q: "¿En qué concentración se encuentra disponible <strong>IBS BIOTIC</strong>?", opts: ["2 x 10⁹", "3 x 10⁹", "3 x 10⁶", "4 x 10⁷"], a: 1 },
+    { q: "¿Cómo es la dosificación de <strong>IBS BIOTIC</strong>?", opts: ["Una cápsula al día durante 6 a 8 semanas", "Una cápsula cada 6 horas durante 6 a 8 semanas", "Una cápsula cada 8 horas durante 6 a 8 semanas", "Una cápsula cada 12 horas durante 6 a 8 semanas"], a: 0 },
+    { q: "La administración de <strong>IBS BIOTIC</strong> está contraindicada con los alimentos:", opts: ["Verdadero", "Falso", "Solo en ayunas", "Depende del paciente"], a: 1 },
+    { q: "¿Cuántas especies tiene <strong>IBS BIOTIC</strong>?", opts: ["2 especies y 3 cepas", "3 especies y 2 cepas", "3 especies y 3 cepas", "Una especie y 2 cepas"], a: 0 },
+    { q: "¿Cuál es un factor diferenciador de <strong>IBS BIOTIC</strong> frente a otros probióticos?", opts: ["Contiene especies únicas", "Es el único que contiene Pediococcus", "Se asocia a mayor producción de polifosfatos", "Todas las anteriores"], a: 3 },
+  ],
+  CYNETIC_PRO: [
+    { q: "¿Cuál NO es un efecto terapéutico de <strong>CYNETIC PRO</strong>?", opts: ["Antiácido", "Antidispéptico", "Antiflatulento", "Procinético"], a: 0 },
+    { q: "La concentración de Levosulpirida, Pancreatina y Simeticona en <strong>CYNETIC PRO</strong> es respectivamente:", opts: ["25 mg – 150 mg – 80 mg", "50 mg – 150 mg – 60 mg", "50 mg – 100 mg – 80 mg", "25 mg – 100 mg – 60 mg"], a: 0 },
+    { q: "¿Qué beneficio presenta la cápsula dura de <strong>CYNETIC PRO</strong>?", opts: ["Mayor rapidez de acción", "Sus microgránulos inhiben la inactivación gástrica", "Garantiza la integridad de los principios activos", "Todas las anteriores"], a: 3 },
+    { q: "Señale el enunciado VERDADERO sobre la farmacocinética de <strong>CYNETIC PRO</strong>:", opts: ["Levosulpirida se metaboliza en gran medida en el hígado", "Pancreatina se excreta por vía renal", "Simeticona se absorbe en el tracto gastrointestinal", "Levosulpirida se excreta por vía renal"], a: 3 },
+    { q: "Señale el enunciado FALSO sobre la farmacodinamia de <strong>CYNETIC PRO</strong>:", opts: ["Levosulpirida inhibe los receptores de Dopamina D2", "Pancreatina contiene lipasa, amilasa y proteasa", "Simeticona disminuye la tensión superficial de las burbujas de gas", "Todas son verdaderas"], a: 3 },
+    { q: "¿Cuál es la dosis de <strong>CYNETIC PRO</strong>?", opts: ["1 cápsula media hora antes de las tres comidas principales", "1 cápsula media hora después de las tres comidas principales", "1 cápsula en medio de cada comida principal", "1 cápsula antes de las comidas y al acostarse"], a: 0 },
+    { q: "Respecto a la seguridad de <strong>CYNETIC PRO</strong>, señale el enunciado FALSO:", opts: ["Los eventos adversos con Simeticona son frecuentemente de carácter neuroléptico", "Está contraindicado en caso de feocromocitoma", "Los eventos adversos a dosis recomendadas son poco frecuentes", "Está contraindicado durante la lactancia"], a: 0 },
+  ],
+  TRAVAD_PIK: [
+    { q: "¿Cuál es el principio activo de <strong>TRAVAD PIK</strong>?", opts: ["Óxido de Magnesio Liviano", "Picosulfato de sodio", "Ácido Cítrico Anhidro", "Todas las anteriores son correctas"], a: 3 },
+    { q: "¿Qué tipo de laxante es <strong>TRAVAD PIK</strong>?", opts: ["Estimulante", "Formador de masa", "Osmótico", "A y C son correctas"], a: 3 },
+    { q: "¿Cuál es el mecanismo de acción de <strong>TRAVAD PIK</strong>?", opts: ["Estimula los plexos de Meissner y Auerbach", "Atrae líquido del intestino y disminuye la reabsorción hídrica", "Aumenta la masa fecal estimulando el movimiento intestinal", "A y B son ciertas"], a: 3 },
+    { q: "¿La absorción sistémica de <strong>TRAVAD PIK</strong> es de un 60%?", opts: ["Verdadero", "Falso", "Solo en dosis altas", "Depende de la dieta"], a: 1 },
+    { q: "¿En cuántos ml de agua se disuelve cada sobre de <strong>TRAVAD PIK</strong>?", opts: ["120 ml", "150 ml", "250 ml", "200 ml"], a: 1 },
+    { q: "Al disolver <strong>TRAVAD PIK</strong> en agua, ¿qué características tiene la solución?", opts: ["Turbio grisáceo, olor a naranja, temperatura caliente", "Claro anaranjado, olor a naranja, temperatura caliente", "Turbio grisáceo, olor a naranja, temperatura fría", "Claro anaranjado, olor a naranja, temperatura fría"], a: 0 },
+  ],
+};
+
+const ALL_QUESTIONS = { 1: [], 2: [], 3: [], 4: [] };
+
+// ===== STATE =====
+let state = {};
+
+function shuffleBank() {
+  const meds = Object.keys(BANK_BY_MED).sort(() => Math.random() - 0.5);
+  for (let lvl = 1; lvl <= 4; lvl++) {
+    const medBank = BANK_BY_MED[meds[lvl - 1]];
+    const picked = medBank[Math.floor(Math.random() * medBank.length)];
+    ALL_QUESTIONS[lvl] = [picked];
+  }
+  // swapPool: una pregunta alternativa por medicamento para la ayuda "cambiar pregunta"
+  ALL_QUESTIONS.swapPool = meds.map((med, i) => {
+    const bank = BANK_BY_MED[med];
+    const already = ALL_QUESTIONS[i + 1][0];
+    const others = bank.filter(q => q !== already);
+    return others[Math.floor(Math.random() * others.length)];
+  });
+  ALL_QUESTIONS.swapUsed = 0;
+}
+
+function initState() {
+  shuffleBank();
+  state = {
+    level: 1,
+    questionIndex: 0,
+    score: 0,
+    helpChange: true,
+    help5050: true,
+    timer: TIMER_PER_LEVEL[1],
+    timerMax: TIMER_PER_LEVEL[1],
+    timerInterval: null,
+    usedQuestions: { 1: [], 2: [], 3: [], 4: [] },
+    currentQuestion: null,
+    locked: false,
+  };
+}
+
+// ===== AUDIO (Web Audio API) =====
+let audioCtx = null;
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playTone(freq, type, duration, vol = 0.15, delay = 0) {
+  try {
+    const ctx = getCtx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, ctx.currentTime + delay);
+    g.gain.linearRampToValueAtTime(vol, ctx.currentTime + delay + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+    o.start(ctx.currentTime + delay);
+    o.stop(ctx.currentTime + delay + duration + 0.05);
+  } catch(e) {}
+}
+
+function soundClick() { playTone(440, 'sine', 0.08, 0.08); }
+function soundCorrect() {
+  playTone(523, 'sine', 0.15, 0.15);
+  playTone(659, 'sine', 0.15, 0.15, 0.12);
+  playTone(784, 'sine', 0.2, 0.15, 0.24);
+}
+function soundWrong() {
+  playTone(200, 'sawtooth', 0.3, 0.15);
+  playTone(150, 'sawtooth', 0.4, 0.12, 0.15);
+}
+function soundLevelUp() {
+  [523,587,659,698,784].forEach((f,i) => playTone(f, 'sine', 0.15, 0.12, i*0.1));
+}
+function soundWin() {
+  [523,659,784,1047].forEach((f,i) => playTone(f,'sine',0.3,0.15,i*0.12));
+  setTimeout(() => [784,1047,1319].forEach((f,i) => playTone(f,'sine',0.25,0.15,i*0.1)), 600);
+}
+function soundTick() { playTone(880, 'square', 0.03, 0.04); }
+
+// ===== BACKGROUND MUSIC =====
+const BG_MUSIC_HIGH = 0.8;  // volumen normal
+const BG_MUSIC_LOW  = 0.2;  // volumen durante preguntas
+let bgFadeInterval = null;
+
+function bgMusicStart() {
+  const music = document.getElementById('bg-music');
+  music.volume = BG_MUSIC_HIGH;
+  music.currentTime = 0;
+  music.play().catch(() => {});
+}
+
+function bgMusicStop() {
+  const music = document.getElementById('bg-music');
+  clearInterval(bgFadeInterval);
+  music.pause();
+  music.currentTime = 0;
+}
+
+function bgMusicFadeTo(targetVol, duration = 800) {
+  const music = document.getElementById('bg-music');
+  clearInterval(bgFadeInterval);
+  const steps    = 20;
+  const interval = duration / steps;
+  const delta    = (targetVol - music.volume) / steps;
+  bgFadeInterval = setInterval(() => {
+    const next = music.volume + delta;
+    if ((delta > 0 && next >= targetVol) || (delta < 0 && next <= targetVol)) {
+      music.volume = targetVol;
+      clearInterval(bgFadeInterval);
+    } else {
+      music.volume = Math.max(0, Math.min(1, next));
+    }
+  }, interval);
+}
+
+// ===== HELPERS =====
+const BG_MAP = {
+  'intro-screen': 'bg-intro',
+  'game-screen':  'bg-game',
+  'loss-screen':  'bg-loss',
+  'win-screen':   'bg-win',
+};
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.body.classList.remove('bg-intro', 'bg-game', 'bg-loss', 'bg-win');
+  if (BG_MAP[id]) document.body.classList.add(BG_MAP[id]);
+
+  // Manejo del video de fondo en loss-screen
+  const lossVideo = document.getElementById('loss-video');
+  if (lossVideo) {
+    if (id === 'loss-screen') {
+      lossVideo.currentTime = 0;
+      lossVideo.play();
+    } else {
+      lossVideo.pause();
+    }
+  }
+}
+
+function getRandomQuestion(level) {
+  const pool = ALL_QUESTIONS[level].filter((_, i) => !state.usedQuestions[level].includes(i));
+  if (pool.length === 0) {
+    state.usedQuestions[level] = [];
+    return { q: ALL_QUESTIONS[level][0], idx: 0 };
+  }
+  const poolIdx = Math.floor(Math.random() * pool.length);
+  const realIdx = ALL_QUESTIONS[level].indexOf(pool[poolIdx]);
+  return { q: ALL_QUESTIONS[level][realIdx], idx: realIdx };
+}
+
+function updateLevelTheme(level) {
+  const gs = document.getElementById('game-screen');
+  const isActive = gs.classList.contains('active');
+  gs.className = 'screen lvl' + level + (isActive ? ' active' : '');
+  document.getElementById('level-name').textContent = LEVEL_NAMES[level];
+}
+
+function renderQuestion() {
+  const { q, idx } = getRandomQuestion(state.level);
+  state.currentQuestion = { ...q, idx };
+  state.usedQuestions[state.level].push(idx);
+
+  document.getElementById('question-text').innerHTML = q.q;
+
+  // answers
+  const grid = document.getElementById('answers-grid');
+  grid.innerHTML = '';
+  const letters = ['A', 'B', 'C', 'D'];
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'answer-btn';
+    btn.dataset.idx = i;
+    btn.innerHTML = `<span class="answer-letter">${letters[i]}</span>${opt}`;
+    btn.onclick = () => { soundClick(); selectAnswer(i, btn); };
+    grid.appendChild(btn);
+  });
+
+  updateLevelTheme(state.level);
+  startTimer();
+}
+
+function startTimer() {
+  clearInterval(state.timerInterval);
+  state.timerMax = TIMER_PER_LEVEL[state.level];
+  state.timer = state.timerMax;
+  updateTimerUI();
+  state.timerInterval = setInterval(() => {
+    state.timer--;
+    updateTimerUI();
+    if (state.timer <= 5) soundTick();
+    if (state.timer <= 0) {
+      clearInterval(state.timerInterval);
+      timeOut();
+    }
+  }, 1000);
+}
+
+function updateTimerUI() {
+  const el = document.getElementById('timer');
+  const bar = document.getElementById('timer-bar');
+  el.textContent = state.timer;
+  const pct = (state.timer / state.timerMax) * 100;
+  bar.style.width = pct + '%';
+  el.classList.toggle('danger', state.timer <= 5);
+  if (state.timer <= 5) bar.style.background = 'var(--wrong)';
+  else bar.style.background = 'var(--lvl-color, var(--accent))';
+}
+
+function timeOut() {
+  if (state.locked) return;
+  state.locked = true;
+  soundWrong();
+  disableAnswers();
+  setTimeout(() => endGame(false), 1000);
+}
+
+function selectAnswer(idx, btn) {
+  if (state.locked) return;
+  state.locked = true;
+  clearInterval(state.timerInterval);
+
+  const correct = state.currentQuestion.a;
+  const allBtns = document.querySelectorAll('.answer-btn');
+
+  if (idx === correct) {
+    btn.classList.add('selected-correct');
+    soundCorrect();
+    setTimeout(() => nextQuestion(), 1200);
+  } else {
+    btn.classList.add('selected-wrong');
+    allBtns[correct].classList.add('reveal-correct');
+    soundWrong();
+    setTimeout(() => endGame(false), 1500);
+  }
+}
+
+function disableAnswers() {
+  document.querySelectorAll('.answer-btn').forEach(b => b.disabled = true);
+  const correct = state.currentQuestion.a;
+  document.querySelectorAll('.answer-btn')[correct]?.classList.add('reveal-correct');
+}
+
+function nextQuestion() {
+  state.questionIndex++;
+  const total = QUESTIONS_PER_LEVEL[state.level];
+
+  if (state.questionIndex >= total) {
+    // Level complete
+    const prevLevel = state.level;
+    state.level++;
+    state.questionIndex = 0;
+
+    if (prevLevel === 4) {
+      endGame(true);
+    } else {
+      showLevelTransition(state.level);
+    }
+  } else {
+    state.locked = false;
+    renderQuestion();
+  }
+}
+
+function showLevelTransition(level) {
+  soundLevelUp();
+  const lt = document.getElementById('level-transition');
+  const gs = document.getElementById('game-screen');
+  const isActive = gs.classList.contains('active');
+  gs.className = 'screen lvl' + level + (isActive ? ' active' : '');
+
+  document.getElementById('lt-level-img').src = 'img/level-' + level + '.png';
+  lt.className = 'level-transition lvl' + level + ' show';
+
+  setTimeout(() => {
+    lt.classList.remove('show');
+    state.locked = false;
+    renderQuestion();
+  }, 2000);
+}
+
+function endGame(win) {
+  clearInterval(state.timerInterval);
+  bgMusicFadeTo(BG_MUSIC_HIGH, 1000);
+  if (win) {
+    soundWin();
+    showScreen('win-screen');
+    spawnParticles();
+  } else {
+    showScreen('loss-screen');
+  }
+}
+
+function useChangeQuestion() {
+  if (!state.helpChange || state.locked) return;
+  soundClick();
+  state.helpChange = false;
+  document.getElementById('help-change').disabled = true;
+  clearInterval(state.timerInterval);
+
+  // Swap current question with next from swapPool
+  const swapIdx = ALL_QUESTIONS.swapUsed;
+  if (swapIdx < ALL_QUESTIONS.swapPool.length) {
+    const newQ = ALL_QUESTIONS.swapPool[swapIdx];
+    ALL_QUESTIONS.swapUsed++;
+    // Replace current slot in level with the swap question
+    const levelQ = ALL_QUESTIONS[state.level];
+    levelQ[state.questionIndex] = newQ;
+    // Remove the previously registered index so renderQuestion picks fresh
+    state.usedQuestions[state.level].pop();
+  }
+
+  state.locked = false;
+  renderQuestion();
+}
+
+function use5050() {
+  if (!state.help5050 || state.locked) return;
+  soundClick();
+  state.help5050 = false;
+  document.getElementById('help-5050').disabled = true;
+
+  const correct = state.currentQuestion.a;
+  const btns = [...document.querySelectorAll('.answer-btn')];
+  const wrongIdxs = btns.map((_,i) => i).filter(i => i !== correct);
+  // eliminate 2 random wrong answers
+  const toElim = wrongIdxs.sort(() => Math.random() - 0.5).slice(0, 2);
+  toElim.forEach(i => btns[i].classList.add('eliminated'));
+}
+
+function spawnParticles() {
+  const container = document.getElementById('win-particles');
+  container.innerHTML = '';
+  const colors = ['#f0c040','#ff6b35','#00e676','#2196f3','#e91e63','#9c27b0'];
+  for (let i = 0; i < 80; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = `
+      left: ${Math.random()*100}%;
+      background: ${colors[Math.floor(Math.random()*colors.length)]};
+      animation-duration: ${1.5 + Math.random()*2}s;
+      animation-delay: ${Math.random()*1.5}s;
+      width: ${4 + Math.random()*8}px;
+      height: ${4 + Math.random()*8}px;
+    `;
+    container.appendChild(p);
+  }
+}
+
+function startGame() {
+  soundClick();
+  initState();
+  document.getElementById('help-change').disabled = false;
+  document.getElementById('help-5050').disabled = false;
+  const music = document.getElementById('bg-music');
+  if (music.paused) {
+    bgMusicStart();
+  }
+  showScreen('game-screen');
+  bgMusicFadeTo(BG_MUSIC_LOW, 1000);
+  renderQuestion();
+}
+
+function resetGame() {
+  soundClick();
+  bgMusicStart(); // reinicia desde el principio a volumen alto
+  showSplash();
+}
+
+function showSplash() {
+  // Oculta todas las pantallas
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.body.classList.remove('bg-intro', 'bg-game', 'bg-loss', 'bg-win');
+
+  const splash = document.getElementById('splash-screen');
+  const img    = document.getElementById('splash-img');
+  const images = ['img/splash-1.webp', 'img/splash-2.webp'];
+
+  splash.classList.add('visible');
+  img.src = images[0];
+  img.classList.remove('fade-out');
+
+  // Después de 2s → fade out imagen 1
+  setTimeout(() => {
+    img.classList.add('fade-out');
+
+    // Cuando termina el fade → cambia a imagen 2
+    setTimeout(() => {
+      img.src = images[1];
+      img.classList.remove('fade-out');
+
+      // Después de 2s → fade out imagen 2
+      setTimeout(() => {
+        img.classList.add('fade-out');
+
+        // Cuando termina → oculta splash y muestra intro
+        setTimeout(() => {
+          splash.classList.remove('visible');
+          showScreen('intro-screen');
+        }, 600);
+      }, 2000);
+    }, 600);
+  }, 2000);
+}
+
+// Init — arranca con el splash
+initState();
+showSplash();
+</script>
+</body>
+</html>
