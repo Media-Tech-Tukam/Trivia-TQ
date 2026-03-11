@@ -367,7 +367,7 @@ body {
 .question-text {
   font-family: 'Rajdhani', sans-serif;
   font-weight: 600;
-  font-size: 64px;
+  font-size: 80px;
   line-height: 1.5;
   text-align: center;
   color: var(--text);
@@ -394,11 +394,11 @@ body {
   background-color: transparent;
   border: none;
   border-radius: 0;
-  padding: 80px 72px 80px 200px;
+  padding: 0 72px 0 200px;
   cursor: pointer;
   font-family: 'Rajdhani', sans-serif;
   font-weight: 600;
-  font-size: 44px;
+  font-size: 65px;
   color: var(--text);
   text-align: left;
   display: flex;
@@ -407,7 +407,7 @@ body {
   transition: all 0.2s;
   position: relative;
   overflow: hidden;
-  min-height: 176px;
+  min-height: 250px;
 }
 .answer-btn:not(:disabled):hover  { transform: translateX(12px) scale(1.02); filter: brightness(1.15); }
 .answer-btn:not(:disabled):active { transform: scale(0.98); }
@@ -420,7 +420,7 @@ body {
 .answer-letter {
   font-family: 'Orbitron', monospace;
   font-weight: 700;
-  font-size: 50px;
+  font-size: 75px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   transition: color 0.2s;
